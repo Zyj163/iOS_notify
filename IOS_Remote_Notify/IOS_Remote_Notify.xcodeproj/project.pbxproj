@@ -207,7 +207,7 @@
 				TargetAttributes = {
 					6D8B73591C9BF49C00E0DA2C = {
 						CreatedOnToolsVersion = 7.2;
-						DevelopmentTeam = 6JD2FZC6PX;
+						DevelopmentTeam = K7Y6C8JUH6;
 						SystemCapabilities = {
 							com.apple.BackgroundModes = {
 								enabled = 1;
@@ -424,10 +424,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				DEVELOPMENT_TEAM = K7Y6C8JUH6;
 				INFOPLIST_FILE = IOS_Remote_Notify/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.wolianxi.kkchat;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.iOS-notify.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};
@@ -439,10 +440,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				DEVELOPMENT_TEAM = K7Y6C8JUH6;
 				INFOPLIST_FILE = IOS_Remote_Notify/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.wolianxi.kkchat;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.iOS-notify.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};
