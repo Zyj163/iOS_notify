@@ -157,6 +157,10 @@
         UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
         //监听通知的接收与点击事件
         center.delegate = self;
+        
+        //添加按钮
+        [self addCategoryForIOS10];
+        
         //向用户请求权限
         [center requestAuthorizationWithOptions:UNAuthorizationOptionBadge | UNAuthorizationOptionSound | UNAuthorizationOptionAlert completionHandler:^(BOOL granted, NSError * _Nullable error) {
             if (!error && granted) {
@@ -177,9 +181,29 @@
         }];
         
     } else if (version >= 8.0 && version < 10.0) {
-        //ios8-ios10
+        //ios8-<ios10
         
-        UIUserNotificationSettings *notifySet = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert categories:nil];
+        UIMutableUserNotificationAction *mAct = [[UIMutableUserNotificationAction alloc]init];
+        mAct.identifier = @"action";//按钮的标示
+        mAct.title=@"Accept";//按钮的标题
+        mAct.activationMode = UIUserNotificationActivationModeForeground;//当点击的时候启动程序
+        mAct.destructive = YES;
+        mAct.authenticationRequired = YES;
+        
+        UIMutableUserNotificationAction *mAct2 = [[UIMutableUserNotificationAction alloc]init];
+        mAct2.identifier = @"action2";//按钮的标示
+        mAct2.title=@"Reject";//按钮的标题
+        mAct2.activationMode = UIUserNotificationActivationModeBackground;//当点击的时候不启动程序
+        mAct2.authenticationRequired = NO;//需要解锁才能处理，如果action.activationMode = UIUserNotificationActivationModeForeground;则这个属性被忽略
+        mAct2.destructive = NO;
+        
+        UIMutableUserNotificationCategory *categorys = [[UIMutableUserNotificationCategory alloc] init];
+        categorys.identifier = @"alert";//这组动作的唯一标示,推送通知的时候也是根据这个来区分
+        [categorys setActions:@[mAct,mAct2] forContext:UIUserNotificationActionContextMinimal];
+        
+        //iOS9可以添加输入框
+        
+        UIUserNotificationSettings *notifySet = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert categories:[NSSet setWithObject:categorys]];
         [[UIApplication sharedApplication] registerUserNotificationSettings:notifySet];
         
     } else {
@@ -187,6 +211,30 @@
         
         [application registerForRemoteNotificationTypes:UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeSound];
     }
+}
+
+#pragma mark: iOS10添加交互按钮
+- (void)addCategoryForIOS10 {
+    
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    //点击类Action
+    UNNotificationAction *joinAction = [UNNotificationAction actionWithIdentifier:@"action.join" title:@"接收邀请" options:UNNotificationActionOptionAuthenticationRequired];//解锁
+    
+    UNNotificationAction *lookAction = [UNNotificationAction actionWithIdentifier:@"action.look" title:@"查看邀请" options:UNNotificationActionOptionForeground];//打开应用
+    
+    UNNotificationAction *cancelAction = [UNNotificationAction actionWithIdentifier:@"action.cancel" title:@"取消" options:UNNotificationActionOptionDestructive];//取消
+    
+    //输入框类Action
+    UNTextInputNotificationAction *inputAction = [UNTextInputNotificationAction actionWithIdentifier:@"action.input" title:@"输入" options:UNNotificationActionOptionForeground textInputButtonTitle:@"发送" textInputPlaceholder:@"占位文字"];
+    
+    /*
+     intentIdentifiers 意图标识符 可在 <Intents/INIntentIdentifiers.h> 中查看，主要是针对电话、carplay 等开放的 API
+     options 通知选项 枚举类型 也是为了支持 carplay
+     远端推送Remote Notification一定要保证里面包含category键值对一致
+     */
+    UNNotificationCategory *notificationCategory = [UNNotificationCategory categoryWithIdentifier:@"myCategory" actions:@[lookAction, joinAction, cancelAction, inputAction] intentIdentifiers:@[] options:UNNotificationCategoryOptionCustomDismissAction];
+    
+    [center setNotificationCategories:[NSSet setWithObject:notificationCategory]];
 }
 
 #pragma mark: iOS10 收到通知（本地和远端) UNUserNotificationCenterDelegate
@@ -234,6 +282,26 @@
 
 #pragma mark: App通知的点击事件,如果使用户长按（3DTouch）、弹出Action页面等并不会触发。点击Action的时候会触发！
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)())completionHandler {
+    
+    NSString *actionIdentify = response.actionIdentifier;
+    //输入
+    if ([response isKindOfClass:[UNTextInputNotificationResponse class]]) {
+        
+        NSString* userSayStr = [(UNTextInputNotificationResponse *)response userText];
+        NSLog(@"actionid = %@\n  userSayStr = %@",actionIdentify, userSayStr);
+    }
+    
+    //点击
+    if ([actionIdentify isEqualToString:@"action.join"]) {
+        
+        NSLog(@"actionid = %@\n",actionIdentify);
+        
+    }else if ([actionIdentify isEqualToString:@"action.look"]){
+        
+        NSLog(@"actionid = %@\n",actionIdentify);
+    }
+
+    
     //收到推送的请求
     UNNotificationRequest *request = response.notification.request;
     
