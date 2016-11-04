@@ -7,6 +7,7 @@
 //
 
 //http://www.jianshu.com/p/c58f8322a278
+//http://www.jianshu.com/p/81c6bd16c7ac
 
 #import "AppDelegate.h"
 
@@ -22,53 +23,17 @@
 
 @implementation AppDelegate
 
-/*
- // Notification requests that are waiting for their trigger to fire
- //获取未送达的所有消息列表
- - (void)getPendingNotificationRequestsWithCompletionHandler:(void(^)(NSArray<UNNotificationRequest *> *requests))completionHandler;
- //删除所有未送达的特定id的消息
- - (void)removePendingNotificationRequestsWithIdentifiers:(NSArray<NSString *> *)identifiers;
- //删除所有未送达的消息
- - (void)removeAllPendingNotificationRequests;
- 
- // Notifications that have been delivered and remain in Notification Center. Notifiations triggered by location cannot be retrieved, but can be removed.
- //获取已送达的所有消息列表
- - (void)getDeliveredNotificationsWithCompletionHandler:(void(^)(NSArray<UNNotification *> *notifications))completionHandler __TVOS_PROHIBITED;
- //删除所有已送达的特定id的消息
- - (void)removeDeliveredNotificationsWithIdentifiers:(NSArray<NSString *> *)identifiers __TVOS_PROHIBITED;
- //删除所有已送达的消息
- - (void)removeAllDeliveredNotifications __TVOS_PROHIBITED;
- */
+
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
-    if (version >= 8.0) {
-        UIMutableUserNotificationAction *mAct = [[UIMutableUserNotificationAction alloc]init];
-        mAct.identifier = @"action";//按钮的标示
-        mAct.title=@"Accept";//按钮的标题
-        mAct.activationMode = UIUserNotificationActivationModeForeground;//当点击的时候启动程序
-        mAct.destructive = YES;
-        mAct.authenticationRequired = YES;
-        
-        UIMutableUserNotificationAction *mAct2 = [[UIMutableUserNotificationAction alloc]init];
-        mAct2.identifier = @"action2";//按钮的标示
-        mAct2.title=@"Reject";//按钮的标题
-        mAct2.activationMode = UIUserNotificationActivationModeBackground;//当点击的时候不启动程序
-        mAct2.authenticationRequired = NO;//需要解锁才能处理，如果action.activationMode = UIUserNotificationActivationModeForeground;则这个属性被忽略
-        mAct2.destructive = NO;
-        
-        UIMutableUserNotificationCategory *categorys = [[UIMutableUserNotificationCategory alloc] init];
-        categorys.identifier = @"alert";//这组动作的唯一标示,推送通知的时候也是根据这个来区分
-        [categorys setActions:@[mAct,mAct2] forContext:UIUserNotificationActionContextMinimal];
-        
-        UIUserNotificationSettings *notifySet = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert categories:[NSSet setWithObject:categorys]];
-        [[UIApplication sharedApplication] registerUserNotificationSettings:notifySet];
-    }else {
-        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert];
-    }
+    //申请通知权限
+    [self replyPushNotificationAuthorization:application];
+    
     return YES;
 }
 
+#pragma mark: iOS9以上iOS10以下收到用户点击
 - (void)application:(UIApplication *)application handleActionWithIdentifier:(nullable NSString *)identifier forRemoteNotification:(NSDictionary *)userInfo withResponseInfo:(NSDictionary *)responseInfo completionHandler:(void(^)())completionHandler
 {
     NSLog(@"handleActionWithIdentifier:%@,userInfo:%@,responseInfo:%@",identifier,userInfo,responseInfo);
@@ -76,6 +41,7 @@
     completionHandler();
 }
 
+#pragma mark: iOS8以上iOS9以下收到用户点击
 - (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier forRemoteNotification:(NSDictionary *)userInfo completionHandler:(void (^)())completionHandler
 {
     NSLog(@"handleActionWithIdentifier:%@,userInfo:%@",identifier,userInfo);
@@ -91,7 +57,7 @@
 //    }
 }
 
-#pragma mark: iOS7以上收到通知
+#pragma mark: iOS7以上iOS10以下收到通知
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(nonnull void (^)(UIBackgroundFetchResult))completionHandler
 {
 //    if (application.applicationState == UIApplicationStateBackground) {
@@ -110,28 +76,16 @@
 #pragma mark: 注册成功
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
 {
-    NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration defaultSessionConfiguration];
-    NSURLSession *session = [NSURLSession sessionWithConfiguration:sessionConfiguration delegate:self delegateQueue:nil];
-    
-//    devicetoken
+    //get devicetoken
     NSString *token = [self transformDeviceToken:deviceToken];
-    
     NSLog(@"deviceToken----------%@",token);
+    
+    //save devicetoken
     [[NSUserDefaults standardUserDefaults] setObject:token forKey:@"deviceToken"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     
-    //发送到自己的服务器
-    NSMutableURLRequest *mRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://kkchat.wolianxi.com/client/user/regtoken"]];
-    mRequest.HTTPMethod = @"POST";
-    [mRequest addValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    [mRequest addValue:@"application/json" forHTTPHeaderField:@"Accept"];
-    NSDictionary *mapData = @{@"deviceToken" : token};
-    NSData *postData = [NSJSONSerialization dataWithJSONObject:mapData options:0 error:nil];
-    [mRequest setHTTPBody:postData];
-    NSURLSessionDataTask *task = [session dataTaskWithRequest:mRequest completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-        NSLog(@"NSURLSessionDataTask========%@",error);
-    }];
-    [task resume];
+    //send devicetoken
+    [self sendDeviceToken:token];
 }
 
 #pragma mark: 注册失败
@@ -146,6 +100,24 @@
     token = [token stringByReplacingOccurrencesOfString:@"<" withString:@""];
     token = [token stringByReplacingOccurrencesOfString:@">" withString:@""];
     return token;
+}
+
+#pragma mark: 发送devicetoken到服务器
+- (void)sendDeviceToken:(NSString *)deviceToken {
+    //发送到自己的服务器
+    NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:sessionConfiguration delegate:self delegateQueue:nil];
+    NSMutableURLRequest *mRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://kkchat.wolianxi.com/client/user/regtoken"]];
+    mRequest.HTTPMethod = @"POST";
+    [mRequest addValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    [mRequest addValue:@"application/json" forHTTPHeaderField:@"Accept"];
+    NSDictionary *mapData = @{@"deviceToken" : deviceToken};
+    NSData *postData = [NSJSONSerialization dataWithJSONObject:mapData options:0 error:nil];
+    [mRequest setHTTPBody:postData];
+    NSURLSessionDataTask *task = [session dataTaskWithRequest:mRequest completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        NSLog(@"NSURLSessionDataTask========%@",error);
+    }];
+    [task resume];
 }
 
 #pragma mark: 申请通知权限
@@ -232,7 +204,7 @@
      options 通知选项 枚举类型 也是为了支持 carplay
      远端推送Remote Notification一定要保证里面包含category键值对一致
      */
-    UNNotificationCategory *notificationCategory = [UNNotificationCategory categoryWithIdentifier:@"myCategory" actions:@[lookAction, joinAction, cancelAction, inputAction] intentIdentifiers:@[] options:UNNotificationCategoryOptionCustomDismissAction];
+    UNNotificationCategory *notificationCategory = [UNNotificationCategory categoryWithIdentifier:@"alert" actions:@[lookAction, joinAction, cancelAction, inputAction] intentIdentifiers:@[] options:UNNotificationCategoryOptionCustomDismissAction];
     
     [center setNotificationCategories:[NSSet setWithObject:notificationCategory]];
 }
